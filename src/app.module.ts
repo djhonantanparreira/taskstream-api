@@ -4,6 +4,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import typeorm from './config/typeorm';
 import { RedisModule } from './redis/redis.module';
 import { TasksModule } from './tasks/tasks.module';
+import { DatabaseModule } from './database/database.module';
+import { AuditLogModule } from './audit-log/audit-log.module';
 
 @Module({
   imports: [
@@ -15,8 +17,10 @@ import { TasksModule } from './tasks/tasks.module';
       inject: [ConfigService],
       useFactory: async (configService: ConfigService) => (configService.get('typeorm')),
     }),
+    DatabaseModule,
     RedisModule,
     TasksModule,
+    AuditLogModule,
   ],
   controllers: [],
   providers: [],
