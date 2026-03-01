@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { RedisService } from '../redis/redis.service';
 import { TasksService } from './tasks.service';
+import { EventsService } from '../events/events.service';
 import { Task } from './task.entity';
 import { TaskStatus } from './task.enum';
 import { CreateTaskDto } from './dto/create-task.dto';
@@ -10,6 +11,7 @@ describe('TasksService', () => {
     let service: TasksService;
     let mockRepository: any;
     let mockRedisService: any;
+    let mockEventsService: EventsService;
 
     beforeEach(async () => {
         mockRepository = {
@@ -21,11 +23,15 @@ describe('TasksService', () => {
             del: jest.fn(),
         };
 
+        mockEventsService = new EventsService();
+        mockEventsService.emit = jest.fn();
+
         const module: TestingModule = await Test.createTestingModule({
             providers: [
                 TasksService,
                 { provide: getRepositoryToken(Task), useValue: mockRepository },
                 { provide: RedisService, useValue: mockRedisService },
+                { provide: EventsService, useValue: mockEventsService },
             ],
         }).compile();
 
@@ -59,6 +65,10 @@ describe('TasksService', () => {
             expect(mockRepository.create).toHaveBeenCalledWith(createTaskDto);
             expect(mockRepository.save).toHaveBeenCalledWith(savedTask);
             expect(mockRedisService.del).toHaveBeenCalledWith('tasks:all');
+            expect(mockEventsService.emit).toHaveBeenCalledWith({
+                type: 'task_created',
+                payload: savedTask,
+            });
             expect(result).toEqual(savedTask);
         });
     });
