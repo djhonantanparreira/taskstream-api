@@ -1,4 +1,6 @@
-import { Controller, Post, Body, Get, Param, Patch, Delete } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Patch, Delete, Sse, MessageEvent } from '@nestjs/common';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
@@ -11,6 +13,13 @@ export class TasksController {
     @Post()
     create(@Body() createTaskDto: CreateTaskDto): Promise<Task> {
         return this.tasksService.create(createTaskDto);
+    }
+
+    @Sse('events')
+    events(): Observable<MessageEvent> {
+        return this.tasksService.subscribeToEvents().pipe(
+            map((event) => ({ data: event } as MessageEvent)),
+        );
     }
 
     @Get()

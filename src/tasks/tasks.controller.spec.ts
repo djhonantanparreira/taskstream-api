@@ -16,6 +16,7 @@ describe('TasksController', () => {
             findOne: jest.fn(),
             update: jest.fn(),
             remove: jest.fn(),
+            subscribeToEvents: jest.fn(),
         };
 
         const module: TestingModule = await Test.createTestingModule({
@@ -130,6 +131,21 @@ describe('TasksController', () => {
             await controller.remove('some-uuid');
 
             expect(mockTasksService.remove).toHaveBeenCalledWith('some-uuid');
+        });
+    });
+
+    describe('events', () => {
+        it('should return an observable of MessageEvent', (done) => {
+            const { of } = require('rxjs');
+            const mockEvent = { type: 'task_created', payload: { id: 'some-uuid' } };
+            mockTasksService.subscribeToEvents.mockReturnValue(of(mockEvent));
+
+            const result = controller.events();
+
+            result.subscribe((messageEvent: any) => {
+                expect(messageEvent).toEqual({ data: mockEvent });
+                done();
+            });
         });
     });
 });

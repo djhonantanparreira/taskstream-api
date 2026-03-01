@@ -30,6 +30,7 @@ describe('TasksService', () => {
 
         mockEventsService = new EventsService();
         mockEventsService.emit = jest.fn();
+        mockEventsService.subscribe = jest.fn();
 
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -181,6 +182,19 @@ describe('TasksService', () => {
                 type: 'task_deleted',
                 payload: { id: 'some-uuid' },
             });
+        });
+    });
+
+    describe('subscribeToEvents', () => {
+        it('should return an observable from eventsService', () => {
+            const { of } = require('rxjs');
+            const mockObservable = of({ type: 'task_created', payload: {} });
+            mockEventsService.subscribe = jest.fn().mockReturnValue(mockObservable);
+
+            const result = service.subscribeToEvents();
+
+            expect(mockEventsService.subscribe).toHaveBeenCalled();
+            expect(result).toEqual(mockObservable);
         });
     });
 });

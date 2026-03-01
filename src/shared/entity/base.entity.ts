@@ -1,8 +1,8 @@
 import {
     CreateDateColumn,
-    DeleteDateColumn,
     PrimaryGeneratedColumn,
-    UpdateDateColumn,
+    Column,
+    BeforeUpdate,
 } from 'typeorm';
 
 export abstract class BaseEntity {
@@ -16,17 +16,15 @@ export abstract class BaseEntity {
     })
     createdAt: Date;
 
-    @UpdateDateColumn({
+    @Column({
         name: 'updated_at',
-        type: 'timestamp with time zone',
-        default: () => 'CURRENT_TIMESTAMP',
-    })
-    updatedAt: Date;
-
-    @DeleteDateColumn({
-        name: 'deleted_at',
         type: 'timestamp with time zone',
         nullable: true,
     })
-    deletedAt: Date | null;
+    updatedAt: Date | null;
+
+    @BeforeUpdate()
+    updateTimestamp() {
+        this.updatedAt = new Date();
+    }
 }

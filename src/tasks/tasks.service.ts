@@ -7,6 +7,8 @@ import { Repository } from "typeorm";
 import { EventsService } from "../events/events.service";
 import { UpdateTaskDto } from "./dto/update-task.dto";
 import { NotFoundException } from "@nestjs/common";
+import { Observable } from "rxjs";
+import { TaskEvent } from "../events/events.interface";
 
 @Injectable()
 export class TasksService {
@@ -16,6 +18,10 @@ export class TasksService {
         private readonly redisService: RedisService,
         private readonly eventsService: EventsService,
     ) { }
+
+    subscribeToEvents(): Observable<TaskEvent> {
+        return this.eventsService.subscribe();
+    }
 
     async create(createTaskDto: CreateTaskDto): Promise<Task> {
         const task = this.tasksRepository.create(createTaskDto);
