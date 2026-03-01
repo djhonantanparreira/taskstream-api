@@ -1,98 +1,296 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# TaskStream API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+> **[Leia em Português](README.pt-BR.md)**
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+A RESTful task management API built with **NestJS**, featuring real-time events via **SSE (Server-Sent Events)**, **Redis** caching, **PostgreSQL** persistence, and automatic **audit logging** of every data change.
 
-## Description
+---
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## Table of Contents
 
-## Project setup
+- [TaskStream API](#taskstream-api)
+  - [Table of Contents](#table-of-contents)
+  - [Features](#features)
+  - [Tech Stack](#tech-stack)
+  - [Architecture](#architecture)
+  - [Getting Started](#getting-started)
+    - [Prerequisites](#prerequisites)
+    - [Environment Variables](#environment-variables)
+    - [Running with Docker](#running-with-docker)
+    - [Running Locally](#running-locally)
+  - [API Endpoints](#api-endpoints)
+    - [Create Task](#create-task)
+    - [Update Task](#update-task)
+    - [Delete Task](#delete-task)
+    - [Task Statuses](#task-statuses)
+  - [Real-Time Events (SSE)](#real-time-events-sse)
+  - [Audit Logging](#audit-logging)
+  - [Testing](#testing)
+  - [Project Structure](#project-structure)
+  - [License](#license)
 
-```bash
-$ npm install
+---
+
+## Features
+
+- **CRUD** operations for tasks (Create, Read, Update, Delete)
+- **Real-time notifications** via Server-Sent Events (SSE)
+- **Redis caching** with automatic invalidation (30s TTL)
+- **Automatic audit logging** — every insert, update, and delete is tracked
+- **Swagger/OpenAPI** interactive documentation
+- **Input validation** with class-validator (whitelist + transform)
+- **UUID** primary keys
+- **TypeORM** migrations (no `synchronize: true`)
+- **Multi-stage Docker** build with non-root user
+- **Health checks** for all services
+
+---
+
+## Tech Stack
+
+| Layer     | Technology              |
+| --------- | ----------------------- |
+| Runtime   | Node.js ≥ 20            |
+| Framework | NestJS 11               |
+| Language  | TypeScript 5            |
+| Database  | PostgreSQL 17           |
+| ORM       | TypeORM 0.3             |
+| Cache     | Redis 7 (via ioredis)   |
+| Docs      | Swagger / OpenAPI 3     |
+| Container | Docker + Docker Compose |
+| Testing   | Jest + Supertest        |
+
+---
+
+## Architecture
+
+```mermaid
+flowchart LR
+    Client(["Client<br/>(HTTP / SSE)"])
+
+    subgraph Docker Compose
+        API["NestJS API"]
+        PG[("PostgreSQL")]
+        RD[("Redis<br/>Cache")]
+        AL["Audit Logs<br/>(TypeORM Subscriber)"]
+    end
+
+    Client -- "HTTP requests<br/>(CRUD)" --> API
+    API -- "SSE stream<br/>(real-time events)" --> Client
+    API -- "save / query" --> PG
+    API <-- "cache read / write<br/>(TTL 30s)" --> RD
+    API -. "auto-logging<br/>(insert, update, delete)" .-> AL
+    AL -- "writes" --> PG
 ```
 
-## Compile and run the project
+**Request flow:**
+
+1. **Client** sends HTTP requests (CRUD) or connects via SSE for real-time events
+2. **GET /tasks** → checks **Redis** cache first; on miss, queries **PostgreSQL** and caches the result (30s TTL)
+3. **POST / PATCH / DELETE** → persists in **PostgreSQL**, invalidates Redis cache, and emits an SSE event
+4. **TypeORM Subscriber** → automatically logs every insert, update, and delete to the `audit_logs` table
+5. **SSE stream** → all connected clients receive `task_created`, `task_updated`, or `task_deleted` events in real time
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- **Docker** and **Docker Compose** (recommended)
+- Or: **Node.js ≥ 20**, **PostgreSQL 17**, **Redis 7**
+
+### Environment Variables
+
+Copy the example file and adjust as needed:
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+cp .env.example .env
 ```
 
-## Run tests
+| Variable         | Default          | Description         |
+| ---------------- | ---------------- | ------------------- |
+| `PORT`           | `3000`           | App listening port  |
+| `NODE_ENV`       | `development`    | Environment mode    |
+| `DB_HOST`        | `postgres`       | PostgreSQL host     |
+| `DB_PORT`        | `5432`           | PostgreSQL port     |
+| `DB_USER`        | `postgres`       | PostgreSQL user     |
+| `DB_PASSWORD`    | `postgres`       | PostgreSQL password |
+| `DB_NAME`        | `tasksdb`        | Database name       |
+| `REDIS_HOST`     | `redis`          | Redis host          |
+| `REDIS_PORT`     | `6379`           | Redis port          |
+| `REDIS_PASSWORD` | `redis_password` | Redis password      |
+
+### Running with Docker
 
 ```bash
-# unit tests
-$ npm run test
+# Start all services (app + postgres + redis)
+docker compose up --build -d
 
-# e2e tests
-$ npm run test:e2e
+# Check logs
+docker compose logs -f app
 
-# test coverage
-$ npm run test:cov
+# Stop everything
+docker compose down
 ```
 
-## Deployment
+The API will be available at **http://localhost:3000** and Swagger docs at **http://localhost:3000/api**.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### Running Locally
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Install dependencies
+npm install
+
+# Make sure PostgreSQL and Redis are running locally
+# Update .env with DB_HOST=localhost and REDIS_HOST=localhost
+
+# Run migrations and start in dev mode
+npm run build
+npm run migration:run
+npm run start:dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+---
 
-## Resources
+## API Endpoints
 
-Check out a few resources that may come in handy when working with NestJS:
+| Method   | Endpoint        | Description                   |
+| -------- | --------------- | ----------------------------- |
+| `POST`   | `/tasks`        | Create a new task             |
+| `GET`    | `/tasks`        | List all tasks (cached 30s)   |
+| `GET`    | `/tasks/:id`    | Get a task by UUID            |
+| `PATCH`  | `/tasks/:id`    | Update a task                 |
+| `DELETE` | `/tasks/:id`    | Delete a task                 |
+| `GET`    | `/tasks/events` | SSE stream — real-time events |
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### Create Task
 
-## Support
+```bash
+curl -X POST http://localhost:3000/tasks \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Implement login page", "description": "Create login with email and password"}'
+```
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+### Update Task
 
-## Stay in touch
+```bash
+curl -X PATCH http://localhost:3000/tasks/<uuid> \
+  -H "Content-Type: application/json" \
+  -d '{"status": "in_progress"}'
+```
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+### Delete Task
+
+```bash
+curl -X DELETE http://localhost:3000/tasks/<uuid>
+```
+
+### Task Statuses
+
+| Status      | Value         |
+| ----------- | ------------- |
+| Pending     | `pending`     |
+| In Progress | `in_progress` |
+| Done        | `done`        |
+
+> Full interactive documentation available at **http://localhost:3000/api** (Swagger UI).
+
+---
+
+## Real-Time Events (SSE)
+
+Connect to the SSE stream to receive real-time notifications:
+
+```bash
+curl -N http://localhost:3000/tasks/events
+```
+
+Events emitted:
+
+| Event          | Trigger           |
+| -------------- | ----------------- |
+| `task_created` | A task is created |
+| `task_updated` | A task is updated |
+| `task_deleted` | A task is deleted |
+
+Each event payload contains the full task object (or `{ id }` for deletions).
+
+---
+
+## Audit Logging
+
+Every mutation on tracked entities is automatically logged to the `audit_logs` table via a **TypeORM Entity Subscriber**. No manual code is needed in services.
+
+| Column          | Description                                 |
+| --------------- | ------------------------------------------- |
+| `id`            | Audit log UUID                              |
+| `event`         | `insert`, `update`, `soft_remove`, `remove` |
+| `entity_id`     | UUID of the affected entity                 |
+| `entity_name`   | Entity class name (e.g., `Task`)            |
+| `entity_before` | JSON snapshot before the change             |
+| `entity_after`  | JSON snapshot after the change              |
+| `created_at`    | Timestamp of the audit entry                |
+
+---
+
+## Testing
+
+```bash
+# Unit tests
+npm run test
+
+# Watch mode
+npm run test:watch
+
+# Coverage report
+npm run test:cov
+```
+
+---
+
+## Project Structure
+
+```
+src/
+├── main.ts                          # Bootstrap + Swagger setup
+├── app.module.ts                    # Root module
+├── config/
+│   └── typeorm.ts                   # TypeORM DataSource config
+├── database/
+│   └── database.module.ts           # Registers audit subscriber
+├── tasks/
+│   ├── task.entity.ts               # Task entity
+│   ├── task.enum.ts                 # TaskStatus enum
+│   ├── tasks.controller.ts          # REST + SSE controller
+│   ├── tasks.service.ts             # Business logic
+│   ├── tasks.module.ts              # Tasks module
+│   └── dto/
+│       ├── create-task.dto.ts       # Create validation
+│       └── update-task.dto.ts       # Update validation (partial)
+├── audit-log/
+│   ├── audit-log.entity.ts          # AuditLog entity
+│   ├── audit-log.service.ts         # Audit persistence
+│   └── audit-log.module.ts          # AuditLog module
+├── events/
+│   ├── events.interface.ts          # TaskEvent type
+│   ├── events.service.ts            # In-memory SSE hub
+│   └── events.module.ts             # Events module
+├── redis/
+│   ├── redis.service.ts             # Redis get/set/del wrapper
+│   └── redis.module.ts              # Redis module
+├── shared/
+│   ├── entity/
+│   │   └── base.entity.ts           # Abstract base entity (id, timestamps)
+│   └── subscriber/
+│       └── entity-audit.subscriber.ts # TypeORM subscriber for audit logs
+└── migrations/
+    ├── ...-CreateTasks.ts
+    └── ...-CreateAuditLogs.ts
+```
+
+---
 
 ## License
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+This project is licensed under the [MIT License](LICENSE).
