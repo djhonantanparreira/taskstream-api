@@ -36,7 +36,7 @@ API RESTful para gerenciamento de tarefas construída com **NestJS**, com evento
 - **UUID** como chave primária
 - **TypeORM** com migrations (sem `synchronize: true`)
 - **Docker multi-stage** com usuário não-root
-- **Health checks** para todos os serviços
+- **Porta configurável** via variável de ambiente `PORT`
 
 ---
 
@@ -128,7 +128,7 @@ docker compose logs -f app
 docker compose down
 ```
 
-A API estará disponível em **http://localhost:3000** e a documentação Swagger em **http://localhost:3000/api**.
+A API estará disponível em **http://localhost:{PORT}** (padrão `3000`) e a documentação Swagger em **http://localhost:{PORT}/api**. A porta é controlada pela variável de ambiente `PORT`.
 
 ### Rodando Localmente
 

@@ -42,7 +42,7 @@ A RESTful task management API built with **NestJS**, featuring real-time events 
 - **UUID** primary keys
 - **TypeORM** migrations (no `synchronize: true`)
 - **Multi-stage Docker** build with non-root user
-- **Health checks** for all services
+- **Configurable port** via `PORT` environment variable
 
 ---
 
@@ -134,7 +134,7 @@ docker compose logs -f app
 docker compose down
 ```
 
-The API will be available at **http://localhost:3000** and Swagger docs at **http://localhost:3000/api**.
+The API will be available at **http://localhost:{PORT}** (default `3000`) and Swagger docs at **http://localhost:{PORT}/api**. The port is controlled by the `PORT` environment variable.
 
 ### Running Locally
 

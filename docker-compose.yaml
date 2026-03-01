@@ -1,5 +1,4 @@
 services:
-
   app:
     container_name: 'nestjs-app'
     restart: always
@@ -18,18 +17,12 @@ services:
       REDIS_PORT: ${REDIS_PORT}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     ports:
-      - "${PORT}:${PORT}"
+      - '${PORT}:${PORT}'
     depends_on:
       redis:
         condition: service_healthy
       postgres:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${PORT}/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 20s
     networks:
       - nestjs-net
 
@@ -38,12 +31,16 @@ services:
     image: redis:7-alpine
     restart: always
     ports:
-      - "${REDIS_PORT}:${REDIS_PORT}"
+      - '${REDIS_PORT}:${REDIS_PORT}'
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       REDIS_PORT_NUMBER: ${REDIS_PORT}
     healthcheck:
-      test: ["CMD-SHELL", "if [ -z \"$REDIS_PASSWORD\" ]; then redis-cli ping; else redis-cli -a $$REDIS_PASSWORD ping; fi"]
+      test:
+        [
+          'CMD-SHELL',
+          'if [ -z "$REDIS_PASSWORD" ]; then redis-cli ping; else redis-cli -a $$REDIS_PASSWORD ping; fi',
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -62,13 +59,13 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER} -d ${DB_NAME}']
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
     ports:
-      - "${DB_PORT}:${DB_PORT}"
+      - '${DB_PORT}:${DB_PORT}'
     volumes:
       - nestjs-postgres-data:/var/lib/postgresql/data
     networks:
