@@ -1,0 +1,85 @@
+services:
+
+  app:
+    container_name: 'nestjs-app'
+    restart: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: ${NODE_ENV}
+      PORT: ${PORT}
+      DB_HOST: postgres
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      REDIS_HOST: redis
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    ports:
+      - "${PORT}:${PORT}"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${PORT}/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    networks:
+      - nestjs-net
+
+  redis:
+    container_name: 'nestjs-redis'
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "${REDIS_PORT}:${REDIS_PORT}"
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_PORT_NUMBER: ${REDIS_PORT}
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - nestjs-redis-data:/var/lib/redis/data
+    networks:
+      - nestjs-net
+
+  postgres:
+    container_name: 'nestjs-postgres'
+    image: postgres:17-alpine
+    restart: always
+    environment:
+      POSTGRES_PORT_NUMBER: ${DB_PORT}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    ports:
+      - "${DB_PORT}:${DB_PORT}"
+    volumes:
+      - nestjs-postgres-data:/var/lib/postgresql/data
+    networks:
+      - nestjs-net
+
+volumes:
+  nestjs-redis-data:
+    driver: local
+  nestjs-postgres-data:
+    driver: local
+
+networks:
+  nestjs-net:
+    driver: bridge
