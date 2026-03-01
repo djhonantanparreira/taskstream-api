@@ -25,4 +25,14 @@ export class TasksService {
         });
         return task;
     }
+
+    async findAll(): Promise<Task[]> {
+        const cached = await this.redisService.get('tasks:all');
+        if (cached) {
+            return cached as Task[];
+        }
+        const tasks = await this.tasksRepository.find();
+        await this.redisService.set('tasks:all', tasks, 30);
+        return tasks;
+    }
 }

@@ -21,6 +21,7 @@ describe('TasksService', () => {
 
         mockRedisService = {
             del: jest.fn(),
+            get: jest.fn(),
         };
 
         mockEventsService = new EventsService();
@@ -70,6 +71,28 @@ describe('TasksService', () => {
                 payload: savedTask,
             });
             expect(result).toEqual(savedTask);
+        });
+    });
+
+    describe('findAll', () => {
+        it('should return all tasks', async () => {
+            const tasks = [
+                {
+                    id: 'some-uuid',
+                    title: 'Test Task',
+                    description: 'Test Description',
+                    status: TaskStatus.PENDING,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                },
+            ];
+
+            mockRedisService.get.mockResolvedValue(tasks);
+
+            const result = await service.findAll();
+
+            expect(mockRedisService.get).toHaveBeenCalledWith('tasks:all');
+            expect(result).toEqual(tasks);
         });
     });
 });

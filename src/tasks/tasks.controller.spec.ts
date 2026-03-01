@@ -11,6 +11,7 @@ describe('TasksController', () => {
     beforeEach(async () => {
         mockTasksService = {
             create: jest.fn(),
+            findAll: jest.fn(),
         };
 
         const module: TestingModule = await Test.createTestingModule({
@@ -48,6 +49,28 @@ describe('TasksController', () => {
 
             expect(mockTasksService.create).toHaveBeenCalledWith(createTaskDto);
             expect(result).toEqual(createdTask);
+        });
+    });
+
+    describe('findAll', () => {
+        it('should return all tasks', async () => {
+            const tasks = [
+                {
+                    id: 'some-uuid',
+                    title: 'Test Task',
+                    description: 'Test Description',
+                    status: TaskStatus.PENDING,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                },
+            ];
+
+            mockTasksService.findAll.mockResolvedValue(tasks);
+
+            const result = await controller.findAll();
+
+            expect(mockTasksService.findAll).toHaveBeenCalled();
+            expect(result).toEqual(tasks);
         });
     });
 });
