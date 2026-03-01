@@ -1,7 +1,7 @@
 import { Column, Entity } from 'typeorm';
 
-import { BaseEntity } from '../shared/entity/base.entity.js';
-import { TaskStatus } from './task.enum.js';
+import { BaseEntity } from '../shared/entity/base.entity';
+import { TaskStatus } from './task.enum';
 
 @Entity('tasks')
 export class Task extends BaseEntity {
